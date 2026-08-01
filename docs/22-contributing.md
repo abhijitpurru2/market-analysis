@@ -11,7 +11,7 @@
 
 3. **Start infrastructure only**:
    ```bash
-   docker compose up -d zookeeper kafka postgres redis
+   docker compose up -d kafka postgres redis
    ```
 
 4. **Run services locally** for fast iteration:

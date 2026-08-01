@@ -26,7 +26,7 @@ docker compose logs kafka
 docker compose exec kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
 
-**Fix**: Wait for Zookeeper to be ready before Kafka starts. Check `KAFKA_ADVERTISED_LISTENERS` matches the hostname consumers use.
+**Fix**: Verify Kafka KRaft listener settings are internally consistent (`KAFKA_LISTENERS`, `KAFKA_ADVERTISED_LISTENERS`, `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP`, `KAFKA_CONTROLLER_LISTENER_NAMES`, `KAFKA_CONTROLLER_QUORUM_VOTERS`) and check `KAFKA_ADVERTISED_LISTENERS` matches the hostname consumers use.
 
 ---
 
