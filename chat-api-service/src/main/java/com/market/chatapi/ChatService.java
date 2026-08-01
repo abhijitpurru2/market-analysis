@@ -68,6 +68,10 @@ public class ChatService {
         return messages;
     }
 
+    public void clearHistory(String sessionId) {
+        redisTemplate.delete(SESSION_KEY_PREFIX + sessionId);
+    }
+
     private String generateResponse(String userMessage) {
         try {
             Map<String, Object> body = Map.of(
