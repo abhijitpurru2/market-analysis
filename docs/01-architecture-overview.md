@@ -5,43 +5,170 @@
 The market-analysis platform is an enterprise-style microservices system built to ingest, process, and analyse financial market data in near real-time, with an LLM-powered chat interface for user queries.
 
 ```mermaid
-graph TB
-    FE[React Chat Frontend]
-    GW[API Gateway :8080]
-    NI[News Ingestion :8081]
-    MD[Market Data :8082]
-    SM[Social Media :8083]
-    CA[Chat API :8085]
-    SA[Sentiment Analysis :8086]
-    MDP[Market Data Processor :8087]
-    SR[Service Registry :8761]
-    K[Kafka]
-    PG[PostgreSQL]
-    RD[Redis]
-    PR[Prometheus]
-    GR[Grafana]
+flowchart LR
+    USER[Analyst or End User]
+    LLM[External LLM Endpoint]
 
-    FE --> GW
+    subgraph Experience Layer
+        FE[Chat Frontend<br/>React]
+        GW[API Gateway<br/>Spring Cloud Gateway]
+    end
+
+    subgraph Core Application Layer
+        SR[Service Registry<br/>Eureka]
+        CA[Chat API Service]
+        NI[News Ingestion Service]
+        MD[Market Data Service]
+        SM[Social Media Service]
+    end
+
+    subgraph Streaming and Processing Layer
+        K[(Kafka)]
+        SA[Sentiment Analysis Service]
+        MDP[Market Data Processor]
+    end
+
+    subgraph Data and Operations Layer
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+        PR[Prometheus]
+        GR[Grafana]
+    end
+
+    USER --> FE --> GW
     GW --> CA
-    GW --> MD
     GW --> NI
+    GW --> MD
     GW --> SM
+    GW -. service discovery .-> SR
+    CA -. service discovery .-> SR
+    NI -. service discovery .-> SR
+    MD -. service discovery .-> SR
+    SM -. service discovery .-> SR
+    CA -. optional inference .-> LLM
     NI --> K
     MD --> K
     SM --> K
     K --> SA
+    SA --> K
     K --> MDP
+    MD --> PG
+    MDP --> PG
+    CA --> RD
+    PR --> GR
+```
+
+## End-to-End Runtime Flow
+
+```mermaid
+flowchart TB
+    subgraph Client Requests
+        USER[User]
+        FE[Frontend]
+        GW[API Gateway]
+    end
+
+    subgraph Synchronous APIs
+        CHAT[Chat API]
+        NEWS[News Ingestion API]
+        MARKET[Market Data API]
+        SOCIAL[Social Media API]
+    end
+
+    subgraph Event Backbone
+        TOPICS[(Kafka Topics)]
+        SENT[Sentiment Analysis]
+        PROC[Market Data Processor]
+    end
+
+    subgraph Persistence
+        DB[(PostgreSQL)]
+        CACHE[(Redis)]
+    end
+
+    USER --> FE --> GW
+    GW --> CHAT
+    GW --> NEWS
+    GW --> MARKET
+    GW --> SOCIAL
+    CHAT --> CACHE
+    NEWS --> TOPICS
+    MARKET --> TOPICS
+    SOCIAL --> TOPICS
+    TOPICS --> SENT
+    SENT --> TOPICS
+    TOPICS --> PROC
+    PROC --> DB
+    MARKET --> DB
+    DB --> MARKET
+    MARKET --> GW
+    CHAT --> GW
+```
+
+## Platform and Deployment View
+
+```mermaid
+flowchart LR
+    subgraph Runtime Environments
+        DEV[Local Docker Compose]
+        K8S[Kubernetes / Helm]
+    end
+
+    subgraph Shared Platform Components
+        ZK[Zookeeper]
+        K[(Kafka)]
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+        PROM[Prometheus]
+        GRAF[Grafana]
+    end
+
+    subgraph Application Services
+        FE[chat-frontend]
+        GW[api-gateway]
+        SR[service-registry]
+        NI[news-ingestion-service]
+        MD[market-data-service]
+        SM[social-media-service]
+        CA[chat-api-service]
+        SA[sentiment-analysis-service]
+        MDP[market-data-processor]
+    end
+
+    DEV --> FE
+    DEV --> GW
+    DEV --> SR
+    DEV --> NI
+    DEV --> MD
+    DEV --> SM
+    DEV --> CA
+    DEV --> SA
+    DEV --> MDP
+
+    K8S --> FE
+    K8S --> GW
+    K8S --> SR
+    K8S --> NI
+    K8S --> MD
+    K8S --> SM
+    K8S --> CA
+    K8S --> SA
+    K8S --> MDP
+
+    ZK --> K
+    NI --> K
+    MD --> K
+    SM --> K
     SA --> K
     MDP --> PG
     MD --> PG
     CA --> RD
-    PR --> GW
-    GR --> PR
-    GW --> SR
-    NI --> SR
-    MD --> SR
-    SM --> SR
-    CA --> SR
+    GW -. metrics .-> PROM
+    NI -. metrics .-> PROM
+    MD -. metrics .-> PROM
+    SM -. metrics .-> PROM
+    CA -. metrics .-> PROM
+    PROM --> GRAF
 ```
 
 ## Service Catalogue

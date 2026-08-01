@@ -6,6 +6,50 @@ Enterprise-style demo platform for financial news, market data, and social media
 
 ### Architecture at a glance
 
+```mermaid
+flowchart LR
+    USER[User]
+    subgraph Experience
+        FE[chat-frontend]
+        GW[api-gateway]
+    end
+    subgraph Core Services
+        CA[chat-api-service]
+        NI[news-ingestion-service]
+        MD[market-data-service]
+        SM[social-media-service]
+        SR[service-registry]
+    end
+    subgraph Processing
+        K[(Kafka)]
+        SA[sentiment-analysis-service]
+        MDP[market-data-processor]
+    end
+    subgraph Storage and Ops
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+        PR[Prometheus]
+        GR[Grafana]
+    end
+
+    USER --> FE --> GW
+    GW --> CA
+    GW --> NI
+    GW --> MD
+    GW --> SM
+    GW -. discovery .-> SR
+    NI --> K
+    MD --> K
+    SM --> K
+    K --> SA
+    SA --> K
+    K --> MDP
+    MD --> PG
+    MDP --> PG
+    CA --> RD
+    PR --> GR
+```
+
 - **Java / Spring Boot services (Java 17)**:
   - `service-registry` (Eureka, port `8761`)
   - `api-gateway` (port `8080`)
@@ -20,6 +64,8 @@ Enterprise-style demo platform for financial news, market data, and social media
   - `chat-frontend` (React; dev server `3000`, Docker/Nginx `80` mapped to host `3000`)
 - **Infra**:
   - Kafka (`9092`), Zookeeper (`2181`), PostgreSQL (`5432`), Redis (`6379`), Prometheus (`9090`), Grafana (`3001`)
+
+For a fuller architecture breakdown, see `docs/01-architecture-overview.md`.
 
 ### Prerequisites
 
