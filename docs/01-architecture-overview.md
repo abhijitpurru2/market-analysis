@@ -115,8 +115,7 @@ flowchart LR
     end
 
     subgraph Shared Platform Components
-        ZK[Zookeeper]
-        K[(Kafka)]
+        K[(Kafka<br/>KRaft mode)]
         PG[(PostgreSQL)]
         RD[(Redis)]
         PROM[Prometheus]
@@ -155,7 +154,6 @@ flowchart LR
     K8S --> SA
     K8S --> MDP
 
-    ZK --> K
     NI --> K
     MD --> K
     SM --> K

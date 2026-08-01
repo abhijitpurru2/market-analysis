@@ -9,7 +9,7 @@ The platform ships with production-ready Kubernetes manifests in the `k8s/` dire
 | File | Description |
 |------|-------------|
 | `00-namespace.yml` | Namespace, ConfigMap, Secrets |
-| `01-infrastructure.yml` | Zookeeper, Kafka, PostgreSQL |
+| `01-infrastructure.yml` | Kafka (KRaft mode), PostgreSQL |
 | `02-services.yml` | All application microservices |
 
 ## Deploying
@@ -41,10 +41,9 @@ graph TB
             SA[sentiment-analysis x1]
             MDP[market-data-processor x1]
             subgraph Infrastructure
-                K[kafka]
+                K[kafka (KRaft)]
                 PG[postgres]
                 RD[redis]
-                ZK[zookeeper]
             end
         end
     end
