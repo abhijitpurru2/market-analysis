@@ -30,7 +30,7 @@ public class ChatController {
 
     @DeleteMapping("/history/{sessionId}")
     public ResponseEntity<Void> clearHistory(@PathVariable String sessionId) {
-        chatService.getHistory(sessionId);
+        chatService.clearHistory(sessionId);
         return ResponseEntity.noContent().build();
     }
 }
