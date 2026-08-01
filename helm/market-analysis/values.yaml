@@ -1,0 +1,48 @@
+replicaCount:
+  apiGateway: 2
+  marketData: 2
+  chatApi: 2
+  chatFrontend: 2
+  newsIngestion: 1
+  socialMedia: 1
+  sentimentAnalysis: 1
+  marketDataProcessor: 1
+
+image:
+  registry: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceRegistry:
+  port: 8761
+
+apiGateway:
+  port: 8080
+
+kafka:
+  bootstrapServers: kafka:9092
+
+postgres:
+  host: postgres
+  port: 5432
+  database: marketdb
+
+redis:
+  host: redis
+  port: 6379
+
+credentials:
+  dbUser: market
+  dbPass: market
+
+ingress:
+  enabled: false
+  className: nginx
+  host: market-analysis.local
+
+prometheus:
+  enabled: true
+
+grafana:
+  enabled: true
+  adminPassword: admin

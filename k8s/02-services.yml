@@ -1,0 +1,244 @@
+---
+# Service Registry (Eureka)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-registry
+  namespace: market-analysis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-registry
+  template:
+    metadata:
+      labels:
+        app: service-registry
+    spec:
+      containers:
+        - name: service-registry
+          image: market/service-registry:latest
+          ports:
+            - containerPort: 8761
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8761
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-registry
+  namespace: market-analysis
+spec:
+  selector:
+    app: service-registry
+  ports:
+    - port: 8761
+---
+# API Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: market-analysis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: market/api-gateway:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: EUREKA_URL
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: market-analysis
+spec:
+  type: LoadBalancer
+  selector:
+    app: api-gateway
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# News Ingestion Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-ingestion
+  namespace: market-analysis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: news-ingestion
+  template:
+    metadata:
+      labels:
+        app: news-ingestion
+    spec:
+      containers:
+        - name: news-ingestion
+          image: market/news-ingestion-service:latest
+          env:
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: EUREKA_URL
+---
+# Market Data Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data
+  namespace: market-analysis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: market-data
+  template:
+    metadata:
+      labels:
+        app: market-data
+    spec:
+      containers:
+        - name: market-data
+          image: market/market-data-service:latest
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/marketdb"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: market-secrets
+                  key: DB_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: market-secrets
+                  key: DB_PASS
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: EUREKA_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-data
+  namespace: market-analysis
+spec:
+  selector:
+    app: market-data
+  ports:
+    - port: 8082
+---
+# Chat API Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-api
+  namespace: market-analysis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chat-api
+  template:
+    metadata:
+      labels:
+        app: chat-api
+    spec:
+      containers:
+        - name: chat-api
+          image: market/chat-api-service:latest
+          ports:
+            - containerPort: 8085
+          env:
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: market-config
+                  key: EUREKA_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-api
+  namespace: market-analysis
+spec:
+  selector:
+    app: chat-api
+  ports:
+    - port: 8085
+---
+# Chat Frontend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-frontend
+  namespace: market-analysis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chat-frontend
+  template:
+    metadata:
+      labels:
+        app: chat-frontend
+    spec:
+      containers:
+        - name: chat-frontend
+          image: market/chat-frontend:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-frontend
+  namespace: market-analysis
+spec:
+  type: LoadBalancer
+  selector:
+    app: chat-frontend
+  ports:
+    - port: 80
