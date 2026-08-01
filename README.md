@@ -50,7 +50,7 @@ flowchart LR
     PR --> GR
 ```
 
-- **Java / Spring Boot services (Java 17)**:
+- **Java / Spring Boot services (Java 21)**:
   - `service-registry` (Eureka, port `8761`)
   - `api-gateway` (port `8080`)
   - `news-ingestion-service` (port `8081`)
@@ -71,7 +71,7 @@ For a fuller architecture breakdown, see `docs/01-architecture-overview.md`.
 
 Based on `pom.xml`, `requirements.txt`, `package.json`, Dockerfiles, and CI:
 
-- **Java**: 17
+- **Java**: 21
 - **Maven**: Maven 3.9+ recommended
 - **Python**: 3.11
 - **Node.js**: 20.x (CI uses `node:20-alpine`)

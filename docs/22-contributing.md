@@ -7,7 +7,7 @@
    git checkout -b feature/my-feature
    ```
 
-2. **Install prerequisites**: JDK 17, Maven 3.9, Node.js 20, Python 3.11, Docker.
+2. **Install prerequisites**: JDK 21, Maven 3.9, Node.js 20, Python 3.11, Docker.
 
 3. **Start infrastructure only**:
    ```bash

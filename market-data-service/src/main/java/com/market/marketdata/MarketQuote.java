@@ -9,7 +9,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "market_quotes")
+@Table(
+    name = "market_quotes",
+    indexes = @Index(name = "idx_market_quotes_ticker_timestamp", columnList = "ticker,timestamp")
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
