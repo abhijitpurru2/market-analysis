@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.kafka.bootstrapServers | quote }}
+  EUREKA_URL: "http://{{ .Release.Name }}-service-registry:{{ .Values.serviceRegistry.port }}/eureka/"
+  DB_HOST: {{ .Values.postgres.host | quote }}
+  DB_PORT: {{ .Values.postgres.port | quote }}
+  DB_NAME: {{ .Values.postgres.database | quote }}

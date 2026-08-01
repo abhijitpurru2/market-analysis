@@ -1,0 +1,13 @@
+apiVersion: v2
+name: market-analysis
+description: Enterprise demo platform for financial market analysis
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - market-analysis
+  - kafka
+  - spring-boot
+  - microservices
+maintainers:
+  - name: market-analysis-team

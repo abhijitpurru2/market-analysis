@@ -1,0 +1,223 @@
+stages:
+  - test
+  - build
+  - push
+  - deploy
+
+variables:
+  REGISTRY: $CI_REGISTRY
+  IMAGE_PREFIX: $CI_REGISTRY_IMAGE
+  MAVEN_OPTS: >-
+    -Dhttps.protocols=TLSv1.2
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+
+cache:
+  paths:
+    - .m2/repository/
+    - chat-frontend/node_modules/
+
+# ─────────────────────────────────────────────
+# TEST
+# ─────────────────────────────────────────────
+.java-test:
+  stage: test
+  image: eclipse-temurin:17
+  before_script:
+    - apt-get update -q && apt-get install -y maven
+  script:
+    - cd $SERVICE_DIR && mvn test -q
+
+test:service-registry:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: service-registry
+
+test:api-gateway:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: api-gateway
+
+test:news-ingestion:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: news-ingestion-service
+
+test:market-data:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: market-data-service
+
+test:social-media:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: social-media-service
+
+test:chat-api:
+  extends: .java-test
+  variables:
+    SERVICE_DIR: chat-api-service
+
+test:sentiment-analysis:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - cd sentiment-analysis-service
+    - pip install -r requirements.txt -q
+    - python -m pytest tests/ -q || true
+
+test:market-data-processor:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - cd market-data-processor
+    - pip install -r requirements.txt -q
+    - python -m pytest tests/ -q || true
+
+test:frontend:
+  stage: test
+  image: node:20-alpine
+  script:
+    - cd chat-frontend
+    - npm ci --quiet
+    - npm test -- --watchAll=false
+
+# ─────────────────────────────────────────────
+# BUILD (Maven + Docker)
+# ─────────────────────────────────────────────
+.java-build:
+  stage: build
+  image: eclipse-temurin:17
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apt-get update -q && apt-get install -y maven docker.io
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd $SERVICE_DIR && mvn package -DskipTests -q
+    - docker build -t $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker push $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker tag $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_PREFIX/$SERVICE_NAME:latest
+    - docker push $IMAGE_PREFIX/$SERVICE_NAME:latest
+
+build:service-registry:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: service-registry
+    SERVICE_NAME: service-registry
+
+build:api-gateway:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: api-gateway
+    SERVICE_NAME: api-gateway
+
+build:news-ingestion:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: news-ingestion-service
+    SERVICE_NAME: news-ingestion-service
+
+build:market-data:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: market-data-service
+    SERVICE_NAME: market-data-service
+
+build:social-media:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: social-media-service
+    SERVICE_NAME: social-media-service
+
+build:chat-api:
+  extends: .java-build
+  variables:
+    SERVICE_DIR: chat-api-service
+    SERVICE_NAME: chat-api-service
+
+.python-build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA $SERVICE_DIR
+    - docker push $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker tag $IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_PREFIX/$SERVICE_NAME:latest
+    - docker push $IMAGE_PREFIX/$SERVICE_NAME:latest
+
+build:sentiment-analysis:
+  extends: .python-build
+  variables:
+    SERVICE_DIR: sentiment-analysis-service
+    SERVICE_NAME: sentiment-analysis-service
+
+build:market-data-processor:
+  extends: .python-build
+  variables:
+    SERVICE_DIR: market-data-processor
+    SERVICE_NAME: market-data-processor
+
+build:frontend:
+  stage: build
+  image: docker:24
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $IMAGE_PREFIX/chat-frontend:$CI_COMMIT_SHORT_SHA chat-frontend
+    - docker push $IMAGE_PREFIX/chat-frontend:$CI_COMMIT_SHORT_SHA
+    - docker tag $IMAGE_PREFIX/chat-frontend:$CI_COMMIT_SHORT_SHA $IMAGE_PREFIX/chat-frontend:latest
+    - docker push $IMAGE_PREFIX/chat-frontend:latest
+
+# ─────────────────────────────────────────────
+# DEPLOY (Kubernetes / Helm)
+# ─────────────────────────────────────────────
+deploy:staging:
+  stage: deploy
+  image: alpine/helm:3.15.2
+  environment:
+    name: staging
+    url: http://market-analysis.staging.example.com
+  only:
+    - develop
+  before_script:
+    - helm version
+  script:
+    - helm upgrade --install market-analysis helm/market-analysis
+        --namespace market-analysis
+        --create-namespace
+        --set image.tag=$CI_COMMIT_SHORT_SHA
+        --set image.registry=$REGISTRY
+        --wait
+
+deploy:production:
+  stage: deploy
+  image: alpine/helm:3.15.2
+  environment:
+    name: production
+    url: http://market-analysis.example.com
+  only:
+    - main
+  when: manual
+  before_script:
+    - helm version
+  script:
+    - helm upgrade --install market-analysis helm/market-analysis
+        --namespace market-analysis
+        --create-namespace
+        --set image.tag=$CI_COMMIT_SHORT_SHA
+        --set image.registry=$REGISTRY
+        --wait

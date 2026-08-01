@@ -1,0 +1,29 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: chat-api-service
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+chat:
+  history:
+    max-messages: 50
+    ttl-seconds: 3600
+  llm:
+    endpoint: ${LLM_ENDPOINT:http://localhost:11434/api/generate}
+    model: ${LLM_MODEL:llama3}
