@@ -6,7 +6,7 @@
 |------|----------------|
 | Docker | 24.x |
 | Docker Compose | 2.x |
-| Java | 17 |
+| Java | 21 |
 | Maven | 3.9 |
 | Node.js | 20 |
 | Python | 3.11 |

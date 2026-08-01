@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -19,6 +21,27 @@ class ChatControllerTest {
 
     @InjectMocks
     private ChatController chatController;
+
+    @Test
+    void sendMessageShouldRejectBlankMessages() {
+        ChatRequest request = new ChatRequest();
+        request.setMessage("   ");
+
+        ResponseEntity<ChatMessage> response = chatController.sendMessage(request);
+
+        verify(chatService, never()).sendMessage(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNull(response.getBody());
+    }
+
+    @Test
+    void sendMessageShouldRejectNullRequest() {
+        ResponseEntity<ChatMessage> response = chatController.sendMessage(null);
+
+        verify(chatService, never()).sendMessage(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNull(response.getBody());
+    }
 
     @Test
     void clearHistoryShouldDeleteSessionHistory() {

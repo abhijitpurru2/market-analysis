@@ -21,7 +21,7 @@ cache:
 # ─────────────────────────────────────────────
 .java-test:
   stage: test
-  image: eclipse-temurin:17
+  image: eclipse-temurin:21
   before_script:
     - apt-get update -q && apt-get install -y maven
   script:
@@ -86,7 +86,7 @@ test:frontend:
 # ─────────────────────────────────────────────
 .java-build:
   stage: build
-  image: eclipse-temurin:17
+  image: eclipse-temurin:21
   services:
     - docker:dind
   variables:

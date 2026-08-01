@@ -16,6 +16,9 @@ public class ChatController {
 
     @PostMapping("/message")
     public ResponseEntity<ChatMessage> sendMessage(@RequestBody ChatRequest request) {
+        if (request == null || request.getMessage() == null || request.getMessage().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         if (request.getSessionId() == null || request.getSessionId().isBlank()) {
             request.setSessionId(UUID.randomUUID().toString());
         }
