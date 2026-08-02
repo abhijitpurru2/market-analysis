@@ -13,9 +13,6 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
-serviceRegistry:
-  port: 8761
-
 apiGateway:
   port: 8080
 
@@ -31,9 +28,17 @@ redis:
   host: redis
   port: 6379
 
+# Credentials are intentionally empty – supply via --set or a Secrets Manager integration.
+# Example: helm install market-analysis ./helm/market-analysis \
+#   --set credentials.dbUser=<value> \
+#   --set credentials.dbPass=<value> \
+#   --set credentials.jwtSecret=$(openssl rand -base64 32) \
+#   --set credentials.redisPassword=<value>
 credentials:
-  dbUser: market
-  dbPass: market
+  dbUser: ""
+  dbPass: ""
+  jwtSecret: ""
+  redisPassword: ""
 
 ingress:
   enabled: false
@@ -45,4 +50,4 @@ prometheus:
 
 grafana:
   enabled: true
-  adminPassword: admin
+  adminPassword: ""

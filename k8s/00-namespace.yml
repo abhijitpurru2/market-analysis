@@ -13,12 +13,11 @@ metadata:
   namespace: market-analysis
 data:
   KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-  EUREKA_URL: "http://service-registry:8761/eureka/"
   DB_HOST: "postgres"
   DB_PORT: "5432"
   DB_NAME: "marketdb"
 ---
-# Secret – credentials
+# Secret – credentials (populate DB_USER, DB_PASS, JWT_SECRET, REDIS_PASSWORD via external secrets manager or sealed-secrets)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -26,5 +25,7 @@ metadata:
   namespace: market-analysis
 type: Opaque
 stringData:
-  DB_USER: market
-  DB_PASS: market
+  DB_USER: ""
+  DB_PASS: ""
+  JWT_SECRET: ""
+  REDIS_PASSWORD: ""

@@ -4,37 +4,72 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # configured via JwtDecoder bean using jwt.secret
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
       routes:
         - id: news-ingestion
-          uri: lb://news-ingestion-service
+          uri: ${NEWS_INGESTION_URL:http://news-ingestion:8081}
           predicates:
             - Path=/api/news/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: market-data
-          uri: lb://market-data-service
+          uri: ${MARKET_DATA_URL:http://market-data:8082}
           predicates:
             - Path=/api/market/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: social-media
-          uri: lb://social-media-service
+          uri: ${SOCIAL_MEDIA_URL:http://social-media:8083}
           predicates:
             - Path=/api/social/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: chat-api
-          uri: lb://chat-api-service
+          uri: ${CHAT_API_URL:http://chat-api:8085}
           predicates:
             - Path=/api/chat/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
 
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+jwt:
+  secret: ${JWT_SECRET}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info
