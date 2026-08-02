@@ -43,6 +43,8 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         return http
+            // CSRF disabled: API uses stateless JWT ****** auth; browsers do not
+            // auto-send Authorization headers, so CSRF attacks do not apply.
             .csrf(CsrfSpec::disable)
             .cors(corsSpec -> corsSpec.configurationSource(corsConfigurationSource()))
             .authorizeExchange(exchanges -> exchanges
