@@ -16,7 +16,7 @@ flowchart LR
     TEXT[Input Text] --> TOK[Tokenise]
     TOK --> BULL{Bullish words}
     TOK --> BEAR{Bearish words}
-    BULL --> SCORE[score = (bull - bear) / total]
+    BULL --> SCORE["score = (bull - bear) / total"]
     BEAR --> SCORE
     SCORE --> LABEL{Label}
     LABEL -->|score > 0| POS[POSITIVE]

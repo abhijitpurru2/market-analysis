@@ -41,7 +41,7 @@ graph TB
             SA[sentiment-analysis x1]
             MDP[market-data-processor x1]
             subgraph Infrastructure
-                K[kafka (KRaft)]
+                K["kafka (KRaft)"]
                 PG[postgres]
                 RD[redis]
             end
