@@ -1,147 +1,188 @@
 # market-analysis
 
-Enterprise-style demo platform for financial news, market data, and social media analysis using Kubernetes + Spring Boot + Kafka + Python + an LLM chat stack.
+Market Analysis is a microservices demo platform for ingesting market signals, processing them through Kafka, storing derived data in PostgreSQL, and exposing everything through a secured API gateway and chat UI.
 
-## Deployment and Running
+## What changed
 
-This repository now uses Kafka in **KRaft mode** (no ZooKeeper dependency) in Docker Compose and Kubernetes manifests.
+- Eureka/service discovery has been removed from the active runtime setup.
+- Services now communicate through direct service URLs and Docker/Kubernetes service names.
+- Kafka runs in KRaft mode, so ZooKeeper is no longer required.
 
-### 1) Local (no containers for app services)
+## Architecture at a glance
 
-#### Prerequisites
+### User-facing components
 
-Based on repository files (`*/pom.xml`, Python Dockerfiles/requirements, `chat-frontend/package.json`, `chat-frontend/Dockerfile`):
+- `chat-frontend` (`3000`): React UI for asking market questions
+- `api-gateway` (`8080`): single entry point, JWT-protected routing, rate limiting, CORS
+- `chat-api-service` (`8085`): chat history + optional LLM integration backed by Redis
+
+### Data producers
+
+- `news-ingestion-service` (`8081`): publishes financial news events to Kafka
+- `market-data-service` (`8082`): exposes quote APIs and publishes refreshed quote events to Kafka
+- `social-media-service` (`8083`): publishes social sentiment posts to Kafka
+
+### Data processors
+
+- `sentiment-analysis-service` (`8086`): consumes news/social topics, scores text with a lightweight lexicon model, publishes sentiment events
+- `market-data-processor` (`8087`): consumes quote and sentiment topics, writes processed records into PostgreSQL
+
+### Platform services
+
+- `kafka` (`9092`): event backbone
+- `postgres` (`5432`): quote and sentiment persistence
+- `redis` (`6379`): chat session storage and gateway rate limiting
+- `prometheus` (`9090`) and `grafana` (`3001`): observability
+
+## How the project works
+
+1. The frontend sends requests to the API gateway.
+2. The gateway validates JWTs, applies rate limits, and forwards requests to downstream services using configured URLs such as `http://news-ingestion:8081` and `http://chat-api:8085`.
+3. The ingestion services and market data service publish events into Kafka topics:
+   - `market.news.raw`
+   - `market.social.posts`
+   - `market.data.quotes`
+4. `sentiment-analysis-service` consumes raw news and social posts, assigns a sentiment label/score, and publishes to `market.sentiment.scores`.
+5. `market-data-processor` consumes quote and sentiment events and stores them in PostgreSQL tables such as `processed_quotes` and `sentiment_scores`.
+6. `market-data-service` serves quote data over REST, while `chat-api-service` stores per-user chat history in Redis and can call an external LLM endpoint for responses.
+
+## Request flow
+
+### Chat flow
+
+`chat-frontend` → `api-gateway` → `chat-api-service` → `Redis` → optional `LLM_ENDPOINT`
+
+- `POST /api/chat/message` sends a prompt
+- `GET /api/chat/history/{sessionId}` reads chat history
+- `DELETE /api/chat/history/{sessionId}` clears chat history
+
+### Market data flow
+
+`POST /api/market/quotes/refresh` → `market-data-service` → Kafka `market.data.quotes` → `market-data-processor` → PostgreSQL
+
+`GET /api/market/quotes/{ticker}` reads quote data from `market-data-service`
+
+### Signal ingestion flow
+
+- `POST /api/news/ingest` publishes demo news events
+- `POST /api/social/ingest` publishes demo social posts
+- both streams are analyzed by `sentiment-analysis-service`
+
+## Security model
+
+- All Spring services use the same `JWT_SECRET`.
+- Gateway and backend APIs require JWT authentication for application endpoints.
+- `/actuator/health` and `/actuator/info` remain open for health checks.
+- Some write operations, such as ingestion triggers and quote refresh, are restricted to admin roles in the backend services.
+
+## Running locally
+
+### Prerequisites
 
 - Java 21
-- Maven (version not pinned in-repo; use a recent Maven release)
+- Maven
 - Python 3.11
 - Node.js 20 + npm
-- Docker + Docker Compose (for infra dependencies if not installed natively)
+- Docker + Docker Compose
 
-#### Start required infrastructure
-
-For local app-service development, Kafka/PostgreSQL/Redis must still be available. You can run infra-only containers:
+### 1) Start infrastructure only
 
 ```bash
 docker compose up -d kafka postgres redis
 ```
 
-#### Run Java services (`mvn spring-boot:run`)
+### 2) Run Java services
 
 ```bash
-cd service-registry && mvn spring-boot:run
-cd ../api-gateway && mvn spring-boot:run
-cd ../news-ingestion-service && mvn spring-boot:run
-cd ../market-data-service && mvn spring-boot:run
-cd ../social-media-service && mvn spring-boot:run
-cd ../chat-api-service && mvn spring-boot:run
+cd /home/runner/work/market-analysis/market-analysis/api-gateway && mvn spring-boot:run
+cd /home/runner/work/market-analysis/market-analysis/news-ingestion-service && mvn spring-boot:run
+cd /home/runner/work/market-analysis/market-analysis/market-data-service && mvn spring-boot:run
+cd /home/runner/work/market-analysis/market-analysis/social-media-service && mvn spring-boot:run
+cd /home/runner/work/market-analysis/market-analysis/chat-api-service && mvn spring-boot:run
 ```
 
-Required/used environment variables from `application.yml` files:
-
-- `api-gateway`:
-  - `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE`
-- `news-ingestion-service`:
-  - `SPRING_KAFKA_BOOTSTRAP_SERVERS`
-  - `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE`
-- `market-data-service`:
-  - `SPRING_DATASOURCE_URL`
-  - `SPRING_DATASOURCE_USERNAME`
-  - `SPRING_DATASOURCE_PASSWORD`
-  - `SPRING_KAFKA_BOOTSTRAP_SERVERS`
-  - `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE`
-- `social-media-service`:
-  - `SPRING_KAFKA_BOOTSTRAP_SERVERS`
-  - `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE`
-- `chat-api-service`:
-  - `SPRING_REDIS_HOST`
-  - `SPRING_REDIS_PORT`
-  - `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE`
-  - `LLM_ENDPOINT`
-  - `LLM_MODEL`
-- `service-registry`:
-  - No required external env vars in `application.yml` defaults
-
-#### Run Python services (venv + uvicorn)
+### 3) Run Python services
 
 ```bash
-cd sentiment-analysis-service
+cd /home/runner/work/market-analysis/market-analysis/sentiment-analysis-service
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8086
 
-cd ../market-data-processor
+cd /home/runner/work/market-analysis/market-analysis/market-data-processor
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8087
 ```
 
-Required/used Python environment variables from `main.py`:
-
-- `sentiment-analysis-service`:
-  - `KAFKA_BOOTSTRAP_SERVERS`
-- `market-data-processor`:
-  - `KAFKA_BOOTSTRAP_SERVERS`
-  - `DB_HOST`
-  - `DB_PORT`
-  - `DB_NAME`
-  - `DB_USER`
-  - `DB_PASS`
-
-#### Run frontend
+### 4) Run the frontend
 
 ```bash
-cd chat-frontend
+cd /home/runner/work/market-analysis/market-analysis/chat-frontend
 npm install
 npm start
 ```
 
-Frontend env/config used by source:
+## Environment variables
 
-- `REACT_APP_API_BASE` (default `/api/chat` from `src/App.js`)
-- `chat-frontend/package.json` `proxy` is set to `http://api-gateway:8080`
+Copy `/home/runner/work/market-analysis/market-analysis/.env.example` to `.env` before using Docker Compose.
 
-### 2) Docker (Docker Compose)
+Core values used across the stack:
 
-From repository root:
+- `JWT_SECRET`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
+- `GRAFANA_ADMIN_PASSWORD`
+- `CORS_ALLOWED_ORIGINS`
+
+Important service-specific overrides:
+
+- `SPRING_KAFKA_BOOTSTRAP_SERVERS`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_REDIS_HOST`
+- `SPRING_REDIS_PORT`
+- `SPRING_REDIS_PASSWORD`
+- `NEWS_INGESTION_URL`
+- `MARKET_DATA_URL`
+- `SOCIAL_MEDIA_URL`
+- `CHAT_API_URL`
+- `LLM_ENDPOINT`
+- `LLM_MODEL`
+- `KAFKA_BOOTSTRAP_SERVERS`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASS`
+- `REACT_APP_API_BASE`
+
+## Docker Compose
+
+Start the full stack:
 
 ```bash
 docker compose up --build
 ```
 
-Infra only:
+Main exposed ports:
 
-```bash
-docker compose up -d kafka postgres redis
-```
+- `3000` → frontend
+- `3001` → Grafana
+- `5432` → PostgreSQL
+- `6379` → Redis
+- `8080` → API gateway
+- `8085` → chat API
+- `9090` → Prometheus
+- `9092` → Kafka
 
-Port mappings from `docker-compose.yml`:
+## Kubernetes and Helm
 
-- `kafka`: `9092:9092`
-- `postgres`: `5432:5432`
-- `redis`: `6379:6379`
-- `prometheus`: `9090:9090`
-- `grafana`: `3001:3000`
-- `service-registry`: `8761:8761`
-- `api-gateway`: `8080:8080`
-- `chat-api`: `8085:8085`
-- `chat-frontend`: `3000:80`
-
-Useful commands:
-
-```bash
-docker compose logs -f
-docker compose logs -f kafka
-docker compose down
-```
-
-### 3) Kubernetes (raw manifests + Helm)
-
-#### Raw manifests
-
-Apply in this order (matches `docs/15-kubernetes-deployment.md`):
+Raw manifests:
 
 ```bash
 kubectl apply -f k8s/00-namespace.yml
@@ -149,34 +190,17 @@ kubectl apply -f k8s/01-infrastructure.yml
 kubectl apply -f k8s/02-services.yml
 ```
 
-#### Helm chart
-
-Chart location:
-
-- `helm/market-analysis/`
-
-Install/upgrade:
+Helm chart:
 
 ```bash
-helm upgrade --install market-analysis helm/market-analysis --namespace market-analysis --create-namespace --values helm/market-analysis/values.yaml
-```
-
-Override values example:
-
-```bash
-helm upgrade --install market-analysis helm/market-analysis \
+helm upgrade --install market-analysis /home/runner/work/market-analysis/market-analysis/helm/market-analysis \
   --namespace market-analysis \
   --create-namespace \
-  --values helm/market-analysis/values.yaml \
-  --set image.tag=latest \
-  --set replicaCount.apiGateway=2
+  --values /home/runner/work/market-analysis/market-analysis/helm/market-analysis/values.yaml
 ```
 
-Chart structure (current repository state):
+## Notes
 
-- `helm/market-analysis/Chart.yaml`
-- `helm/market-analysis/values.yaml`
-- `helm/market-analysis/templates/configmap.yaml`
-- `helm/market-analysis/templates/secret.yaml`
-- `helm/market-analysis/templates/_helpers.tpl`
-- TODO: no Deployment/Service templates are currently present under `templates/`
+- The React app defaults to `/api/chat` and the package proxy points at `http://api-gateway:8080`.
+- The chat service defaults to `http://localhost:11434/api/generate` with model `llama3` if no LLM settings are supplied.
+- The Python services expose `/health`; Spring services expose actuator health/info endpoints.
