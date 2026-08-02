@@ -6,8 +6,8 @@ spring:
     name: market-data-service
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/marketdb}
-    username: ${SPRING_DATASOURCE_USERNAME:market}
-    password: ${SPRING_DATASOURCE_PASSWORD:market}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,10 +18,8 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+jwt:
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:
