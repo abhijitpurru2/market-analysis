@@ -109,11 +109,15 @@ flowchart TB
 
 ```mermaid
 flowchart LR
+    CLIENT[Client Application]
     USER[Chat User]
     FE[chat-frontend]
     GW[api-gateway]
     CHAT[chat-api-service]
 
+    NEWS_SOURCE[News Feeds / APIs]
+    SOCIAL_SOURCE[Social Platforms / APIs]
+    MARKET_SOURCE[Market Data Vendors / APIs]
     NEWS[news-ingestion-service]
     SOCIAL[social-media-service]
     QUOTES[market-data-service]
@@ -123,8 +127,11 @@ flowchart LR
     DB[(PostgreSQL)]
     MARKET[market-data-service]
 
-    USER --> FE --> GW --> CHAT
+    CLIENT --> USER --> FE --> GW --> CHAT
     CHAT --> MARKET
+    NEWS_SOURCE --> NEWS
+    SOCIAL_SOURCE --> SOCIAL
+    MARKET_SOURCE --> QUOTES
     NEWS --> KAFKA
     SOCIAL --> KAFKA
     QUOTES --> KAFKA
