@@ -105,6 +105,42 @@ flowchart TB
     CHAT --> GW
 ```
 
+## Application-to-Application Flow (Source → DB → Chat)
+
+```mermaid
+flowchart LR
+    CLIENT[Client Application]
+    USER[Chat User]
+    FE[chat-frontend]
+    GW[api-gateway]
+    CHAT[chat-api-service]
+
+    NEWS_SOURCE[News Feeds / APIs]
+    SOCIAL_SOURCE[Social Platforms / APIs]
+    MARKET_SOURCE[Market Data Vendors / APIs]
+    NEWS[news-ingestion-service]
+    SOCIAL[social-media-service]
+    QUOTES[market-data-service]
+    KAFKA[(Kafka)]
+    SENTIMENT[sentiment-analysis-service]
+    PROCESSOR[market-data-processor]
+    DB[(PostgreSQL)]
+    MARKET[market-data-service]
+
+    CLIENT --> USER --> FE --> GW --> CHAT
+    CHAT --> MARKET
+    NEWS_SOURCE --> NEWS
+    SOCIAL_SOURCE --> SOCIAL
+    MARKET_SOURCE --> QUOTES
+    NEWS --> KAFKA
+    SOCIAL --> KAFKA
+    QUOTES --> KAFKA
+    KAFKA --> SENTIMENT --> KAFKA
+    KAFKA --> PROCESSOR --> DB
+    MARKET --> DB
+    DB --> MARKET --> CHAT --> GW --> FE
+```
+
 ## Platform and Deployment View
 
 ```mermaid
